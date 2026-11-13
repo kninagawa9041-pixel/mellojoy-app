@@ -1,0 +1,14 @@
+{
+  "name": "Mellojoy BOT",
+  "short_name": "Mellojoy BOT",
+  "description": "メロジョイの商品チェック・購入サポート",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fffafd",
+  "theme_color": "#f8eaf2",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}
