@@ -45,23 +45,25 @@
   </section>
 
   <section class="section">
-    <div class="section-head"><h2>登録商品・数量</h2><div style="text-align:right"><span class="hint" id="count">0件登録</span><br><span class="hint" id="plannedTotal">購入予定 合計 0個</span></div></div>
-    <div id="products"><div class="card empty">まだ商品が登録されていません。</div></div>
+    <div class="section-head"><h2>公式ショップ商品・在庫チェック</h2><span class="hint" id="catalogCount">未取得</span></div>
+    <div class="card">
+      <p class="hint" style="line-height:1.6;margin:0 0 10px">公式ショップの商品データを取得し、新商品・売り切れからの再入荷を前回確認時と比較します。初回は比較用の基準データを保存します。</p>
+      <div class="row"><input id="catalogFilter" class="input" value="" placeholder="商品名で絞り込み（任意）"><button class="btn" id="refreshCatalog" style="flex:0 0 auto">最新情報を取得</button></div>
+      <div id="catalogState" class="hint" style="margin-top:10px;line-height:1.6">まだ商品データを取得していません。</div>
+    </div>
+    <div id="catalogProducts"><div class="card empty">「最新情報を取得」を押してください。</div></div>
   </section>
 
   <section class="section">
-    <div class="section-head"><h2>確認リマインダー</h2><span class="hint">自動在庫検知ではありません</span></div>
-    <div class="card">
-      <div class="monitor"><div><strong>定期確認のお知らせ</strong><p>この画面を開いている間、商品ページを確認するタイミングをお知らせします。</p></div><button id="reminderSwitch" class="switch" aria-label="リマインダー切替" aria-pressed="false"></button></div>
-      <div id="reminderOptions" style="display:none;margin-top:14px"><label class="label" for="interval">お知らせ間隔</label><select id="interval" class="input"><option value="60">1分</option><option value="180">3分</option><option value="300" selected>5分</option><option value="600">10分</option></select><p class="hint" style="line-height:1.6">サイトへの自動アクセスは行いません。通知を受けたら、登録商品の「公式ページを開く」からご自身で確認してください。</p></div>
-    </div>
+    <div class="section-head"><h2>登録商品・数量</h2><div style="text-align:right"><span class="hint" id="count">0件登録</span><br><span class="hint" id="plannedTotal">購入予定 合計 0個</span></div></div>
+    <div id="products"><div class="card empty">まだ商品が登録されていません。</div></div>
   </section>
 
   <section class="section"><div class="section-head"><h2>履歴</h2><button class="btn ghost small" id="clearLogs">履歴を消去</button></div><div class="card"><div id="logs" class="log">アプリを起動しました。</div></div></section>
   <div class="foot">本アプリは非公式の個人用チェック補助ツールです。メロジョイ公式サービスではありません。サイトの利用規約・アクセス制限を尊重してください。<br><button class="btn ghost small" id="privacyBtn" style="margin-top:9px">プライバシー・安全について</button></div>
 </div>
 
-<div class="modal-back" id="modal"><div class="modal"><h3>プライバシー・安全について</h3><p>・商品名、任意の商品URL、購入予定数量、表示設定はブラウザのローカルストレージに保存されます。<br>・アカウントのパスワード、Cookie、決済カード情報は収集しません。<br>・この試作版は公式サイトの商品一覧・在庫データを自動取得しません。公式サイト検索への移動、商品名と数量の管理、手動確認リマインダーを提供します。<br>・iPhoneのホーム画面アプリとして使うには、HTTPS対応のWebサーバーで公開する必要があります。<br>・端末を共有する場合は登録情報を消去してください。</p><div class="row"><button class="btn danger" id="wipeBtn">登録情報をすべて削除</button><button class="btn secondary" id="closeModal">閉じる</button></div></div></div>
+<div class="modal-back" id="modal"><div class="modal"><h3>プライバシー・安全について</h3><p>・商品名、任意の商品URL、購入予定数量、表示設定はブラウザのローカルストレージに保存されます。<br>・アカウントのパスワード、Cookie、決済カード情報は収集しません。<br>・公式ショップの公開商品データ（products.json）をアプリ起動中に手動更新で取得し、前回取得結果と比較します。ショップ側の公開仕様やブラウザの通信制限により取得できない場合があります。アプリを閉じている間の監視は行いません。<br>・iPhoneのホーム画面アプリとして使うには、HTTPS対応のWebサーバーで公開する必要があります。<br>・端末を共有する場合は登録情報を消去してください。</p><div class="row"><button class="btn danger" id="wipeBtn">登録情報をすべて削除</button><button class="btn secondary" id="closeModal">閉じる</button></div></div></div>
 <script>
 (()=>{
  const STORE='mellojoy_bot_products_v1', LOG='mellojoy_bot_logs_v1';
@@ -80,11 +82,64 @@
  $('addBtn').addEventListener('click',()=>{const name=$('productName').value.trim(),rawUrl=$('productUrl').value.trim(),url=rawUrl?safeUrl(rawUrl):'';const qty=Number($('productQty').value);if(!name){alert('商品名を入力してください。');return}if(!Number.isInteger(qty)||qty<1||qty>99){alert('数量は1〜99の整数で入力してください。');return}if(rawUrl&&!url){alert('商品URLはメロジョイ公式サイトのURLを入力してください。');return}const items=products();if(items.some(p=>p.name.toLowerCase()===name.toLowerCase())){alert('同じ商品名はすでに登録されています。');return}items.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,url,qty,status:'未確認',added:new Date().toISOString()});if(!write(STORE,items)){alert('端末内に保存できませんでした。空き容量やブラウザ設定を確認してください。');return}$('productName').value='';$('productUrl').value='';$('productQty').value='2';render();log('商品を登録：'+name+'／'+qty+'個')});
  $('products').addEventListener('click',e=>{const open=e.target.closest('[data-open]'),del=e.target.closest('[data-delete]'),stat=e.target.closest('[data-status]'),save=e.target.closest('[data-saveqty]');if(open){const p=products().find(x=>x.id===open.dataset.open);if(p){const url=p.url||('https://www.mellojoyjapan.com/search?q='+encodeURIComponent(p.name));window.open(url,'_blank','noopener');log('公式サイトで商品を開く：'+p.name)}}if(save){const id=save.dataset.saveqty,input=$('products').querySelector('[data-qty="'+id+'"]'),qty=Number(input.value),items=products(),p=items.find(x=>x.id===id);if(!Number.isInteger(qty)||qty<1||qty>99){alert('数量は1〜99の整数で入力してください。');return}if(p){p.qty=qty;write(STORE,items);render();log('購入予定数量を更新：'+p.name+'／'+qty+'個')}}if(del){const p=products().find(x=>x.id===del.dataset.delete);if(p&&confirm('「'+p.name+'」を削除しますか？')){write(STORE,products().filter(x=>x.id!==p.id));render();log('商品を削除：'+p.name)}}if(stat){const p=products().find(x=>x.id===stat.dataset.status);if(p){const choice=prompt('確認した結果を入力してください：\\n1 = 販売中\\n2 = 在庫なし\\n3 = 未確認','1');if(!['1','2','3'].includes(choice))return;p.status=choice==='1'?'販売中':choice==='2'?'在庫なし':'未確認';write(STORE,products().map(x=>x.id===p.id?p:x));render();log('確認結果を記録：'+p.name+'／'+p.status);if(p.status==='販売中')notify('販売中として記録しました：'+p.name)}}});
 
- function notify(message){if('Notification'in window&&Notification.permission==='granted'){try{new Notification('Mellojoy BOT',{body:message})}catch{}}}
- $('reminderSwitch').addEventListener('click',async()=>{reminderOn=!reminderOn;$('reminderSwitch').classList.toggle('on',reminderOn);$('reminderSwitch').setAttribute('aria-pressed',String(reminderOn));$('reminderOptions').style.display=reminderOn?'block':'none';if(reminderOn){if('Notification'in window&&Notification.permission==='default'){try{await Notification.requestPermission()}catch{}}schedule()}else{clearInterval(timer);timer=null}log(reminderOn?'確認リマインダーを開始':'確認リマインダーを停止')});
- function schedule(){clearInterval(timer);const seconds=Number($('interval').value);timer=setInterval(()=>{const msg='登録商品の公式ページを確認してください。';notify(msg);log('確認リマインダー：'+msg)},seconds*1000)}$('interval').addEventListener('change',()=>{if(reminderOn)schedule()});
  $('clearLogs').addEventListener('click',()=>{if(confirm('履歴を消去しますか？')){localStorage.removeItem(LOG);renderLogs()}});
  $('privacyBtn').addEventListener('click',()=>$('modal').classList.add('show'));$('closeModal').addEventListener('click',()=>$('modal').classList.remove('show'));$('wipeBtn').addEventListener('click',()=>{if(confirm('登録商品と履歴をすべて削除します。この操作は取り消せません。')){localStorage.removeItem(STORE);localStorage.removeItem(LOG);render();renderLogs();$('modal').classList.remove('show');log('端末内の登録情報を削除しました')}});
+
+ const CATALOG_URL='https://www.mellojoyjapan.com/products.json?limit=250';
+ const SNAPSHOT='mellojoy_bot_catalog_snapshot_v1', EVENTS='mellojoy_bot_catalog_events_v1';
+ let catalogItems=[];
+ function catalogRead(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}}
+ function catalogWrite(key,value){try{localStorage.setItem(key,JSON.stringify(value));return true}catch{return false}}
+ function productAvailable(product){return Array.isArray(product.variants)&&product.variants.some(v=>v.available===true)}
+ function productLink(product){return 'https://www.mellojoyjapan.com/products/'+encodeURIComponent(product.handle)}
+ function renderCatalog(){
+   const q=$('catalogFilter').value.trim().toLocaleLowerCase();
+   const shown=catalogItems.filter(p=>!q||(p.title||'').toLocaleLowerCase().includes(q));
+   $('catalogCount').textContent=catalogItems.length+'商品';
+   if(!shown.length){$('catalogProducts').innerHTML='<div class="card empty">該当する商品がありません。</div>';return}
+   $('catalogProducts').innerHTML=shown.map(p=>{
+     const status=p.available?'在庫あり':'売り切れ';
+     const cls=p.available?'available':'unavailable';
+     const flag=p.event==='new'?'<span class="status" style="background:#fff0d8;color:#925b0b">NEW</span>':p.event==='restock'?'<span class="status available">再入荷</span>':'';
+     return `<article class="card"><div class="product"><div class="product-icon">🧸</div><div class="product-main"><div class="product-name">${escapeHtml(p.title||'名称未設定')}</div><div class="url">${escapeHtml(p.price?('¥'+p.price):'')}</div><span class="status ${cls}">${status}</span> ${flag}</div></div><div class="actions"><button class="btn small" data-catalog-add="${escapeHtml(String(p.id))}">数量リストに追加</button><button class="btn ghost small" data-catalog-open="${escapeHtml(String(p.id))}">公式商品ページ</button></div></article>`;
+   }).join('');
+ }
+ async function refreshCatalog(){
+   const btn=$('refreshCatalog');btn.disabled=true;btn.textContent='取得中…';$('catalogState').textContent='公式ショップの商品データを確認しています。';
+   try{
+     const response=await fetch(CATALOG_URL,{method:'GET',cache:'no-store',headers:{'Accept':'application/json'}});
+     if(!response.ok)throw new Error('HTTP '+response.status);
+     const data=await response.json();if(!data||!Array.isArray(data.products))throw new Error('商品データの形式を確認できませんでした');
+     const previous=catalogRead(SNAPSHOT,null), oldById=new Map((previous?.products||[]).map(p=>[String(p.id),p]));
+     const events=[];
+     catalogItems=data.products.map(p=>{
+       const id=String(p.id),available=productAvailable(p),old=oldById.get(id);let event='';
+       if(previous){if(!old)event='new';else if(old.available===false&&available===true)event='restock';}
+       if(event)events.push({title:p.title,event});
+       return {id,title:p.title||'',handle:p.handle||'',price:p.variants?.[0]?.price||'',available,event};
+     });
+     catalogWrite(SNAPSHOT,{checkedAt:new Date().toISOString(),products:catalogItems.map(p=>({id:p.id,available:p.available}))});
+     catalogWrite(EVENTS,events);
+     const time=new Date().toLocaleString('ja-JP');
+     $('catalogState').textContent=(previous?'前回取得結果との比較完了':'初回取得完了（次回から新商品・再入荷を比較）')+' ／ '+time+(events.length?' ／ 変化 '+events.length+'件':' ／ 新商品・再入荷はありません');
+     log('公式商品データを更新：'+catalogItems.length+'商品、変化 '+events.length+'件');renderCatalog();
+   }catch(err){
+     const msg=String(err?.message||err);
+     $('catalogState').textContent='取得できませんでした。通信制限（CORS）またはショップ側の仕様変更の可能性があります。詳細：'+msg+'。公式ショップを開いて手動で確認してください。';
+     $('catalogProducts').innerHTML='<div class="card empty">商品データを取得できません。公式ショップの商品一覧を開いて確認してください。<br><a href="https://www.mellojoyjapan.com/collections/all" target="_blank" rel="noopener">公式商品一覧を開く</a></div>';
+     log('商品データ取得エラー：'+msg);
+   }finally{btn.disabled=false;btn.textContent='最新情報を取得'}
+ }
+ $('refreshCatalog').addEventListener('click',refreshCatalog);
+ $('catalogFilter').addEventListener('input',renderCatalog);
+ $('catalogProducts').addEventListener('click',e=>{
+   const add=e.target.closest('[data-catalog-add]'),open=e.target.closest('[data-catalog-open]');
+   if(open){const p=catalogItems.find(x=>x.id===open.dataset.catalogOpen);if(p){window.open(productLink(p),'_blank','noopener');log('公式商品ページを開く：'+p.title)}}
+   if(add){const p=catalogItems.find(x=>x.id===add.dataset.catalogAdd);if(!p)return;const items=products();if(items.some(x=>x.catalogId===p.id||x.name.toLocaleLowerCase()===p.title.toLocaleLowerCase())){alert('この商品はすでに数量リストに登録されています。');return}items.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),catalogId:p.id,name:p.title,url:productLink(p),qty:2,status:p.available?'販売中':'在庫なし',added:new Date().toISOString()});if(!write(STORE,items)){alert('端末内に保存できませんでした。');return}render();log('商品を数量リストに追加：'+p.title+'／2個')}
+ });
+ // Fetch once when the app is opened; there is no background polling.
+ if(navigator.onLine)refreshCatalog();
+
  if('serviceWorker'in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
  render();renderLogs();
 })();
