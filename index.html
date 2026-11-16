@@ -85,7 +85,7 @@
  $('clearLogs').addEventListener('click',()=>{if(confirm('履歴を消去しますか？')){localStorage.removeItem(LOG);renderLogs()}});
  $('privacyBtn').addEventListener('click',()=>$('modal').classList.add('show'));$('closeModal').addEventListener('click',()=>$('modal').classList.remove('show'));$('wipeBtn').addEventListener('click',()=>{if(confirm('登録商品と履歴をすべて削除します。この操作は取り消せません。')){localStorage.removeItem(STORE);localStorage.removeItem(LOG);render();renderLogs();$('modal').classList.remove('show');log('端末内の登録情報を削除しました')}});
 
- const CATALOG_URL='https://www.mellojoyjapan.com/products.json?limit=250';
+ const CATALOG_URL='./catalog.json';
  const SNAPSHOT='mellojoy_bot_catalog_snapshot_v1', EVENTS='mellojoy_bot_catalog_events_v1';
  let catalogItems=[];
  function catalogRead(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}}
@@ -105,7 +105,7 @@
    }).join('');
  }
  async function refreshCatalog(){
-   const btn=$('refreshCatalog');btn.disabled=true;btn.textContent='取得中…';$('catalogState').textContent='公式ショップの商品データを確認しています。';
+   const btn=$('refreshCatalog');btn.disabled=true;btn.textContent='取得中…';$('catalogState').textContent='最新の商品データを読み込んでいます。データはGitHub Actionsが定期更新します。';
    try{
      const response=await fetch(CATALOG_URL,{method:'GET',cache:'no-store',headers:{'Accept':'application/json'}});
      if(!response.ok)throw new Error('HTTP '+response.status);
@@ -122,10 +122,10 @@
      catalogWrite(EVENTS,events);
      const time=new Date().toLocaleString('ja-JP');
      $('catalogState').textContent=(previous?'前回取得結果との比較完了':'初回取得完了（次回から新商品・再入荷を比較）')+' ／ '+time+(events.length?' ／ 変化 '+events.length+'件':' ／ 新商品・再入荷はありません');
-     log('公式商品データを更新：'+catalogItems.length+'商品、変化 '+events.length+'件');renderCatalog();
+     log('公開済み商品データを読み込み：'+catalogItems.length+'商品、変化 '+events.length+'件');renderCatalog();
    }catch(err){
      const msg=String(err?.message||err);
-     $('catalogState').textContent='取得できませんでした。通信制限（CORS）またはショップ側の仕様変更の可能性があります。詳細：'+msg+'。公式ショップを開いて手動で確認してください。';
+     $('catalogState').textContent='商品データを読み込めませんでした。GitHub Actionsの初回実行が未完了か、更新処理・通信に問題がある可能性があります。詳細：'+msg+'。公式ショップを開いて手動で確認してください。';
      $('catalogProducts').innerHTML='<div class="card empty">商品データを取得できません。公式ショップの商品一覧を開いて確認してください。<br><a href="https://www.mellojoyjapan.com/collections/all" target="_blank" rel="noopener">公式商品一覧を開く</a></div>';
      log('商品データ取得エラー：'+msg);
    }finally{btn.disabled=false;btn.textContent='最新情報を取得'}
